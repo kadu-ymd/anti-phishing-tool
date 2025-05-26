@@ -33,8 +33,6 @@ DOMAIN_PATTERN = r"^(https?:\/\/)?(www\.)?([a-zA-Z\-]+\.)+[a-zA-Z]{2,}(\/[^\s]*)
 
 URL_POST_FIND = "https://safeBrowse.googleapis.com/v4/threatMatches:find?key="
 
-API_KEY = "AIzaSyDc-ehoHq4pRAdQF05r1m9Cwzw1cBlJspQ"
-
 class URLRequest(BaseModel):
     url: Optional[str] = None
 
@@ -99,10 +97,10 @@ async def perform_certificate_check(hostname: str, port: int = 443) -> Certifica
             raise HTTPException(status_code=500, detail="Data de expiração não encontrada no certificado.")
         
         try:
-            not_after = datetime.datetime.strptime(not_after_str, "%b %d %H:%M:%S %Y %Z")
+            not_after = datetime.strptime(not_after_str, "%b %d %H:%M:%S %Y %Z")
         except ValueError:
             try:
-                not_after = datetime.datetime.strptime(not_after_str, "%b %d %H:%M:%S %Y")
+                not_after = datetime.strptime(not_after_str, "%b %d %H:%M:%S %Y")
                 not_after = not_after.replace(tzinfo=timezone.utc)
             except ValueError:
                 raise HTTPException(status_code=500, detail="Formato de data de expiração desconhecido no certificado.")
@@ -110,7 +108,7 @@ async def perform_certificate_check(hostname: str, port: int = 443) -> Certifica
         if not_after.tzinfo is None:
             not_after = not_after.replace(tzinfo=timezone.utc)
         
-        current_time_aware = datetime.datetime.now(timezone.utc)
+        current_time_aware = datetime.now(timezone.utc)
         is_expired = current_time_aware > not_after
 
         domain_matches_certificate = False
@@ -166,7 +164,6 @@ async def perform_certificate_check(hostname: str, port: int = 443) -> Certifica
         raise HTTPException(status_code=503, detail=friendly_detail)
 
     except Exception as e:
-        traceback.print_exc() 
         raise HTTPException(
             status_code=500,
             detail=f"Ocorreu um erro interno inesperado ao verificar o certificado: {e}"
@@ -316,7 +313,6 @@ async def check_url_endpoint(request: URLRequest):
             api_indicator = "safe"
 
     except Exception as e:
-        print(f"DEBUG: Erro na função check_phishing para '{corrected_url}': {e}")
         traceback.print_exc()
         api_check = "Falha interna ao verificar Google Safe Browse."
         api_indicator = "danger"
