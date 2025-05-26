@@ -3,8 +3,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 
-from cryptography.hazmat.backends import default_backend
-
+import os
+from dotenv import load_dotenv
 import ssl
 import re
 import requests
@@ -12,7 +12,8 @@ import whois
 from datetime import datetime, timezone
 import asyncio
 import socket
-import traceback 
+
+load_dotenv()
 
 origins = [
     "http://localhost:5173",
@@ -32,6 +33,8 @@ app.add_middleware(
 DOMAIN_PATTERN = r"^(https?:\/\/)?(www\.)?([a-zA-Z\-]+\.)+[a-zA-Z]{2,}(\/[^\s]*)?$"
 
 URL_POST_FIND = "https://safeBrowse.googleapis.com/v4/threatMatches:find?key="
+
+API_KEY = os.getenv("API_KEY")
 
 class URLRequest(BaseModel):
     url: Optional[str] = None
@@ -116,12 +119,12 @@ async def perform_certificate_check(hostname: str, port: int = 443) -> Certifica
         try:
             ssl.match_hostname(cert_dict, hostname)
             domain_matches_certificate = True
+
         except ssl.CertificateError as e:
             domain_matches_certificate = False
             ssl_error_message = str(e)
+
         except Exception as e:
-            print(f"DEBUG: Erro inesperado ao verificar match de domínio para {hostname}: {e}")
-            traceback.print_exc()
             domain_matches_certificate = False
             ssl_error_message = "Erro interno ao validar o domínio do certificado."
 
@@ -148,7 +151,6 @@ async def perform_certificate_check(hostname: str, port: int = 443) -> Certifica
         )
     
     except (socket.gaierror, ssl.SSLError, socket.timeout, asyncio.TimeoutError) as e:
-        traceback.print_exc()
         friendly_detail = f"Não foi possível conectar ou estabelecer SSL/TLS com '{hostname}'."
         if "CERTIFICATE_VERIFY_FAILED" in str(e):
             friendly_detail += " O certificado do site não pôde ser verificado (pode estar inválido, autoassinado ou com problemas de confiança)."
@@ -216,7 +218,7 @@ def domain_verifier(hostname: str) -> bool:
 
     domain_without_www = hostname.replace("www.", "")
     
-    if re.search(r'[^\w\.\-]', domain_without_www) or re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', hostname):
+    if not re.match(DOMAIN_PATTERN, domain_without_www):
         return True
     
     return False
@@ -272,13 +274,9 @@ async def check_url_endpoint(request: URLRequest):
             raise ValueError("Não foi possível extrair o hostname. URL inválida.")
         
     except ValueError as e:
-        print(f"DEBUG: Erro ao extrair hostname da URL '{url}': {e}")
-        traceback.print_exc()
         raise HTTPException(status_code=400, detail=f"Formato de URL inválido. Erro: {e}")
     
     except Exception as e:
-        print(f"DEBUG: Erro inesperado ao extrair hostname da URL '{url}': {e}")
-        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Ocorreu um erro interno ao processar a URL: {e}")
 
     format_check = "Erro na verificação de formato."
@@ -298,7 +296,7 @@ async def check_url_endpoint(request: URLRequest):
             format_indicator = "safe"
 
     except Exception as e:
-        print(f"DEBUG: Erro na função domain_verifier para '{url}': {e}")
+        pass
 
     try:
         api_check = check_phishing(corrected_url, API_KEY)
@@ -313,7 +311,6 @@ async def check_url_endpoint(request: URLRequest):
             api_indicator = "safe"
 
     except Exception as e:
-        traceback.print_exc()
         api_check = "Falha interna ao verificar Google Safe Browse."
         api_indicator = "danger"
 
@@ -330,7 +327,7 @@ async def check_url_endpoint(request: URLRequest):
             age_indicator = "safe"
             
     except Exception as e:
-        traceback.print_exc()
+        pass
 
     response_data = {
         "hostname": hostname,
