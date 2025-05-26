@@ -47,7 +47,7 @@ function App() {
                 },
                 {
                     link: url,
-                    check: "Google Safe Browse",
+                    check: "Google Safe Browsing",
                     outcome: basicChecksData.api_check,
                     indicator: basicChecksData.api_indicator,
                 },
