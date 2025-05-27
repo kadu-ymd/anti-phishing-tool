@@ -63,7 +63,7 @@ fastapi run app/server.py --port 8000
 
 Lembrando que o cliente (*frontend*) e o servidor (*backend*) precisam estar rodando simultaneamente para que a aplicação funcione corretamente.
 
-Para ver o vídeo demonstrativo da aplicação funcionando, clique [nesse link]().
+Para ver o vídeo demonstrativo da aplicação funcionando, clique [nesse link](https://youtu.be/vwgup3RgQos).
 
 ---
 
